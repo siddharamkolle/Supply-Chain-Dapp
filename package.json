@@ -1,0 +1,19 @@
+{
+  "name": "supply-chain-dapp",
+  "version": "1.0.0",
+  "description": "Supply Chain Tracking - SkillInfytech Blockchain Internship",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "deploy": "npx hardhat run scripts/deploy.js --network localhost",
+    "node": "npx hardhat node"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.2"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.0",
+    "ethers": "^6.7.0",
+    "dotenv": "^16.0.0"
+  }
+}

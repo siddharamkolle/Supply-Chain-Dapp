@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChainTrace — Supply Chain on Blockchain</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0d0d0d;
+  --paper: #f5f0e8;
+  --cream: #ede8dc;
+  --rust: #c84b2f;
+  --rust-dark: #9e3820;
+  --rust-light: #e8694e;
+  --gold: #c9a84c;
+  --forest: #2d4a3e;
+  --forest-light: #3d6455;
+  --steel: #4a5568;
+  --mist: #8a9bb0;
+  --border: rgba(13,13,13,0.12);
+  --shadow: 0 4px 24px rgba(13,13,13,0.08);
+  --shadow-lg: 0 12px 48px rgba(13,13,13,0.15);
+  --mono: 'DM Mono', monospace;
+  --display: 'Bebas Neue', cursive;
+  --body: 'Instrument Sans', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Grain texture overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.4;
+}
+
+/* Diagonal accent line */
+.page-accent {
+  position: fixed;
+  top: 0; right: 120px;
+  width: 3px;
+  height: 100vh;
+  background: linear-gradient(to bottom, var(--rust) 0%, transparent 100%);
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wrapper {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem 4rem;
+}
+
+/* ===== HEADER ===== */
+header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 2.5rem 0 2rem;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 3rem;
+  gap: 1rem;
+}
+
+.logo-block { display: flex; flex-direction: column; gap: 2px; }
+
+.logo-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--rust);
+  margin-bottom: 2px;
+}
+
+.logo {
+  font-family: var(--display);
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  letter-spacing: 0.03em;
+  color: var(--ink);
+  line-height: 0.9;
+}
+
+.logo em {
+  color: var(--rust);
+  font-style: normal;
+}
+
+.header-right { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; justify-content: flex-end; }
+
+.contract-mini {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--cream);
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.contract-mini input {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink);
+  width: 220px;
+}
+
+.contract-mini input::placeholder { color: var(--mist); }
+
+.btn-set {
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.btn-set:hover { background: var(--rust); }
+
+.wallet-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-family: var(--body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.wallet-btn:hover { background: var(--ink); color: var(--paper); }
+.wallet-btn.connected { border-color: var(--forest); color: var(--forest); background: rgba(45,74,62,0.08); }
+.wallet-btn.connected:hover { background: var(--forest); color: white; }
+
+.wdot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--mist);
+  transition: background 0.3s;
+}
+
+.wallet-btn.connected .wdot { background: #3ecf8e; box-shadow: 0 0 0 3px rgba(62,207,142,0.2); }
+
+/* ===== HERO SECTION ===== */
+.hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  margin-bottom: 4rem;
+  align-items: center;
+}
+
+.hero-text {}
+
+.hero-eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--rust);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hero-eyebrow::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--rust);
+  opacity: 0.3;
+  max-width: 60px;
+}
+
+.hero h1 {
+  font-family: var(--display);
+  font-size: clamp(3rem, 6vw, 5.5rem);
+  line-height: 0.95;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  margin-bottom: 1.5rem;
+}
+
+.hero h1 span {
+  color: var(--rust);
+  display: block;
+}
+
+.hero-desc {
+  font-size: 15px;
+  color: var(--steel);
+  line-height: 1.7;
+  max-width: 420px;
+  margin-bottom: 2rem;
+}
+
+.hero-stats {
+  display: flex;
+  gap: 2rem;
+}
+
+.hstat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.hstat-num {
+  font-family: var(--display);
+  font-size: 2.5rem;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.hstat-num span { color: var(--rust); }
+
+.hstat-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--mist);
+}
+
+/* Hero visual */
+.hero-visual {
+  position: relative;
+  height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hex-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 66L0 50V18L28 2l28 16v32z' fill='none' stroke='%230d0d0d' stroke-width='1'/%3E%3C/svg%3E");
+  background-size: 56px 100px;
+}
+
+.chain-viz {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  max-width: 340px;
+}
+
+.chain-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: white;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  position: relative;
+  animation: blockSlide 0.5s ease both;
+  box-shadow: var(--shadow);
+}
+
+.chain-block:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  bottom: -13px;
+  left: 24px;
+  width: 2px;
+  height: 13px;
+  background: var(--border);
+  z-index: 2;
+}
+
+.chain-block:nth-child(1) { animation-delay: 0.1s; }
+.chain-block:nth-child(2) { animation-delay: 0.2s; margin-left: 20px; }
+.chain-block:nth-child(3) { animation-delay: 0.3s; margin-left: 40px; }
+.chain-block:nth-child(4) { animation-delay: 0.4s; margin-left: 60px; }
+
+@keyframes blockSlide {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: none; }
+}
+
+.cb-icon {
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.cb-icon.c { background: rgba(200,75,47,0.1); }
+.cb-icon.t { background: rgba(201,168,76,0.15); }
+.cb-icon.w { background: rgba(45,74,62,0.1); }
+.cb-icon.d { background: rgba(62,207,142,0.15); }
+
+.cb-info { flex: 1; }
+.cb-loc { font-size: 12px; font-weight: 600; color: var(--ink); }
+.cb-time { font-family: var(--mono); font-size: 10px; color: var(--mist); margin-top: 2px; }
+
+.cb-hash {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--mist);
+  background: var(--cream);
+  padding: 3px 7px;
+  border-radius: 4px;
+}
+
+/* ===== ALERT ===== */
+.alert {
+  padding: 14px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: var(--mono);
+  margin-bottom: 2rem;
+  display: none;
+  border-left: 4px solid;
+  animation: alertIn 0.3s ease;
+}
+
+.alert.show { display: flex; align-items: center; gap: 10px; }
+.alert.info { background: rgba(74,85,104,0.06); border-color: var(--steel); color: var(--steel); }
+.alert.success { background: rgba(45,74,62,0.08); border-color: var(--forest); color: var(--forest); }
+.alert.error { background: rgba(200,75,47,0.08); border-color: var(--rust); color: var(--rust); }
+
+@keyframes alertIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:none} }
+
+/* ===== MAIN LAYOUT ===== */
+.main-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 3rem;
+  margin-bottom: 4rem;
+}
+
+/* ===== PANELS ===== */
+.panel {
+  background: white;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.panel-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--cream);
+}
+
+.panel-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--steel);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-title::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--rust);
+}
+
+.panel-body { padding: 1.5rem; }
+
+/* ===== FORM ===== */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.form-row.full { grid-template-columns: 1fr; }
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+
+.field label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--steel);
+}
+
+.field input, .field select, .field textarea {
+  background: var(--paper);
+  border: 1.5px solid var(--border);
+  border-radius: 7px;
+  padding: 11px 14px;
+  font-family: var(--body);
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  resize: none;
+}
+
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--rust);
+  box-shadow: 0 0 0 3px rgba(200,75,47,0.08);
+}
+
+.field input::placeholder, .field textarea::placeholder { color: var(--mist); }
+
+.field select option { background: white; }
+
+/* ===== BUTTONS ===== */
+.btn-primary {
+  width: 100%;
+  padding: 14px;
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  border-radius: 8px;
+  font-family: var(--body);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  letter-spacing: 0.02em;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--rust);
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+}
+
+.btn-primary:hover::before { transform: translateX(0); }
+.btn-primary span { position: relative; z-index: 1; }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary:disabled::before { display: none; }
+
+.btn-secondary {
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  color: var(--ink);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-family: var(--body);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 0.75rem;
+}
+
+.btn-secondary:hover { border-color: var(--ink); background: var(--cream); }
+.btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Tab system */
+.tab-bar {
+  display: flex;
+  border-bottom: 1.5px solid var(--border);
+  background: var(--cream);
+}
+
+.tab {
+  padding: 12px 20px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mist);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1.5px;
+  transition: all 0.2s;
+}
+
+.tab:hover { color: var(--ink); }
+.tab.active { color: var(--rust); border-bottom-color: var(--rust); }
+
+.tab-pane { display: none; padding: 1.5rem; }
+.tab-pane.active { display: block; }
+
+/* ===== TRACK PANEL ===== */
+.track-input-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 1.5rem;
+}
+
+.track-input {
+  flex: 1;
+  background: var(--paper);
+  border: 1.5px solid var(--border);
+  border-radius: 7px;
+  padding: 11px 14px;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.track-input:focus { border-color: var(--rust); }
+.track-input::placeholder { color: var(--mist); }
+
+.btn-track {
+  padding: 11px 24px;
+  background: var(--rust);
+  color: white;
+  border: none;
+  border-radius: 7px;
+  font-family: var(--body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.btn-track:hover { background: var(--rust-dark); }
+
+/* Product card */
+.product-card {
+  background: var(--paper);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  animation: fadeUp 0.4s ease;
+}
+
+@keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+
+.product-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.product-name {
+  font-family: var(--display);
+  font-size: 1.8rem;
+  letter-spacing: 0.03em;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.product-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  padding: 5px 12px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badge-created { background: rgba(74,85,104,0.1); color: var(--steel); }
+.badge-transit { background: rgba(201,168,76,0.15); color: #9a7820; }
+.badge-warehouse { background: rgba(45,74,62,0.1); color: var(--forest); }
+.badge-customs { background: rgba(200,75,47,0.1); color: var(--rust); }
+.badge-delivery { background: rgba(100,150,200,0.12); color: #4a78a0; }
+.badge-delivered { background: rgba(62,207,142,0.15); color: #1a8a5a; }
+
+.product-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 1rem;
+}
+
+.meta-item { }
+
+.meta-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--mist);
+  margin-bottom: 2px;
+}
+
+.meta-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+/* Timeline */
+.timeline { position: relative; }
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--rust), var(--border));
+}
+
+.timeline-item {
+  display: flex;
+  gap: 16px;
+  padding-bottom: 1.5rem;
+  position: relative;
+  animation: fadeUp 0.4s ease both;
+}
+
+.timeline-item:nth-child(1) { animation-delay: 0.05s; }
+.timeline-item:nth-child(2) { animation-delay: 0.1s; }
+.timeline-item:nth-child(3) { animation-delay: 0.15s; }
+.timeline-item:nth-child(4) { animation-delay: 0.2s; }
+.timeline-item:nth-child(5) { animation-delay: 0.25s; }
+
+.timeline-dot {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+  border: 2px solid var(--paper);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.dot-created { background: var(--steel); color: white; }
+.dot-transit { background: var(--gold); color: white; }
+.dot-warehouse { background: var(--forest); color: white; }
+.dot-customs { background: var(--rust); color: white; }
+.dot-delivery { background: #4a78a0; color: white; }
+.dot-delivered { background: #1a8a5a; color: white; }
+
+.timeline-content {
+  flex: 1;
+  background: white;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 2px;
+}
+
+.tl-action {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.tl-location {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--steel);
+  margin-bottom: 4px;
+}
+
+.tl-meta {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--mist);
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ===== ADD CHECKPOINT ===== */
+.checkpoint-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1.5px solid var(--border);
+}
+
+.section-sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--mist);
+  margin-bottom: 1rem;
+}
+
+/* ===== PRODUCTS TABLE ===== */
+.products-list { display: flex; flex-direction: column; gap: 10px; }
+
+.product-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--paper);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  animation: fadeUp 0.3s ease both;
+}
+
+.product-row:hover {
+  border-color: var(--rust);
+  box-shadow: 0 2px 12px rgba(200,75,47,0.08);
+}
+
+.pr-id {
+  width: 36px; height: 36px;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--paper);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--display);
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.pr-info { flex: 1; }
+.pr-name { font-size: 14px; font-weight: 600; color: var(--ink); }
+.pr-origin { font-size: 11px; color: var(--mist); font-family: var(--mono); margin-top: 2px; }
+
+.pr-status {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pr-checkpoints {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--mist);
+  text-align: right;
+  min-width: 60px;
+}
+
+/* Empty state */
+.empty {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: var(--mist);
+}
+
+.empty-icon { font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.4; }
+.empty-text { font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; }
+
+/* Spinner */
+.spin {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* ===== STATS STRIP ===== */
+.stats-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 3rem;
+}
+
+.stat-box {
+  background: white;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.stat-big {
+  font-family: var(--display);
+  font-size: 2.8rem;
+  color: var(--ink);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.stat-big.red { color: var(--rust); }
+.stat-big.green { color: var(--forest); }
+.stat-big.gold { color: var(--gold); }
+
+.stat-caption {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--mist);
+}
+
+/* ===== FOOTER ===== */
+footer {
+  border-top: 2px solid var(--ink);
+  padding-top: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.footer-logo {
+  font-family: var(--display);
+  font-size: 1.5rem;
+  color: var(--ink);
+  letter-spacing: 0.05em;
+}
+
+.footer-logo em { color: var(--rust); font-style: normal; }
+
+.footer-meta {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mist);
+  text-align: right;
+  line-height: 1.8;
+}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width: 900px) {
+  .hero { grid-template-columns: 1fr; }
+  .hero-visual { display: none; }
+  .main-layout { grid-template-columns: 1fr; }
+  .stats-strip { grid-template-columns: 1fr 1fr; }
+  .header { flex-direction: column; align-items: flex-start; }
+  .header-right { width: 100%; }
+  .contract-mini input { width: 160px; }
+  .form-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="page-accent"></div>
+
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-block">
+      <div class="logo-tag">Blockchain Supply Chain</div>
+      <div class="logo">Chain<em>Trace</em></div>
+    </div>
+    <div class="header-right">
+      <div class="contract-mini">
+<input type="text" id="contractInput" placeholder="0x... paste contract address" />     
+   <button class="btn-set" onclick="setContract()">Set →</button>
+      </div>
+      <button class="wallet-btn" id="walletBtn" onclick="connectWallet()">
+        <div class="wdot" id="wdot"></div>
+        <span id="walletText">Connect Wallet</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ALERT -->
+  <div id="alertBox" class="alert info show">
+    <span>⬡</span>
+    <span id="alertMsg">Deploy contract → paste address above → connect wallet → start tracking</span>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-text">
+      <div class="hero-eyebrow">Ethereum · ERC · Solidity</div>
+      <h1>Track Every <span>Product Move</span> On Chain</h1>
+      <p class="hero-desc">Tamper-proof supply chain transparency powered by Ethereum smart contracts. Every checkpoint is permanently recorded on the blockchain.</p>
+      <div class="hero-stats">
+        <div class="hstat">
+          <div class="hstat-num" id="heroTotal">0<span>+</span></div>
+          <div class="hstat-label">Products Tracked</div>
+        </div>
+        <div class="hstat">
+          <div class="hstat-num">100<span>%</span></div>
+          <div class="hstat-label">Tamper Proof</div>
+        </div>
+        <div class="hstat">
+          <div class="hstat-num">∞</div>
+          <div class="hstat-label">Checkpoints</div>
+        </div>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="hex-grid"></div>
+      <div class="chain-viz">
+        <div class="chain-block">
+          <div class="cb-icon c">🏭</div>
+          <div class="cb-info">
+            <div class="cb-loc">Mumbai Factory</div>
+            <div class="cb-time">Block #4,291,847</div>
+          </div>
+          <div class="cb-hash">0x4f2a...</div>
+        </div>
+        <div class="chain-block">
+          <div class="cb-icon t">🚢</div>
+          <div class="cb-info">
+            <div class="cb-loc">Mumbai Port → Dubai</div>
+            <div class="cb-time">Block #4,291,903</div>
+          </div>
+          <div class="cb-hash">0x7c1b...</div>
+        </div>
+        <div class="chain-block">
+          <div class="cb-icon w">🏬</div>
+          <div class="cb-info">
+            <div class="cb-loc">Dubai Warehouse</div>
+            <div class="cb-time">Block #4,292,156</div>
+          </div>
+          <div class="cb-hash">0x2d8e...</div>
+        </div>
+        <div class="chain-block">
+          <div class="cb-icon d">✅</div>
+          <div class="cb-info">
+            <div class="cb-loc">Delivered to Customer</div>
+            <div class="cb-time">Block #4,292,441</div>
+          </div>
+          <div class="cb-hash">0x9f3c...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS STRIP -->
+  <div class="stats-strip">
+    <div class="stat-box">
+      <div class="stat-big red" id="statProducts">0</div>
+      <div class="stat-caption">Products Registered</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-big gold" id="statCheckpoints">0</div>
+      <div class="stat-caption">Total Checkpoints</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-big green" id="statDelivered">0</div>
+      <div class="stat-caption">Delivered</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-big" id="statNetwork">—</div>
+      <div class="stat-caption">Network</div>
+    </div>
+  </div>
+
+  <!-- MAIN LAYOUT -->
+  <div class="main-layout">
+
+    <!-- LEFT: REGISTER + CHECKPOINT -->
+    <div>
+      <div class="panel">
+        <div class="tab-bar">
+          <div class="tab active" onclick="switchTab('register',this)">Register Product</div>
+          <div class="tab" onclick="switchTab('checkpoint',this)">Add Checkpoint</div>
+        </div>
+
+        <!-- REGISTER TAB -->
+        <div class="tab-pane active" id="tab-register">
+          <div class="form-row">
+            <div class="field">
+              <label>Product Name</label>
+              <input type="text" id="prodName" placeholder="e.g. iPhone 16 Pro" />
+            </div>
+            <div class="field">
+              <label>Manufacturer</label>
+              <input type="text" id="prodMfr" placeholder="e.g. Apple Inc." />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label>Country of Origin</label>
+              <input type="text" id="prodOrigin" placeholder="e.g. China" />
+            </div>
+            <div class="field">
+              <label>Starting Location</label>
+              <input type="text" id="prodLocation" placeholder="e.g. Shenzhen Factory" />
+            </div>
+          </div>
+          <button class="btn-primary" id="registerBtn" onclick="registerProduct()" disabled>
+            <span>Register on Blockchain</span>
+          </button>
+          <button class="btn-secondary" onclick="fillDemo()">Fill Demo Data</button>
+        </div>
+
+        <!-- CHECKPOINT TAB -->
+        <div class="tab-pane" id="tab-checkpoint">
+          <div class="form-row">
+            <div class="field">
+              <label>Product ID</label>
+              <input type="number" id="cpProductId" placeholder="e.g. 1" min="1" />
+            </div>
+            <div class="field">
+              <label>Status</label>
+              <select id="cpStatus">
+                <option value="1">🚛 In Transit</option>
+                <option value="2">🏬 At Warehouse</option>
+                <option value="3">🛃 In Customs</option>
+                <option value="4">📦 Out for Delivery</option>
+                <option value="5">✅ Delivered</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label>Location</label>
+              <input type="text" id="cpLocation" placeholder="e.g. Dubai Port" />
+            </div>
+            <div class="field">
+              <label>Handler</label>
+              <input type="text" id="cpHandler" placeholder="e.g. DHL Express" />
+            </div>
+          </div>
+          <div class="form-row full">
+            <div class="field">
+              <label>Action Description</label>
+              <input type="text" id="cpAction" placeholder="e.g. Cleared customs inspection" />
+            </div>
+          </div>
+          <button class="btn-primary" id="checkpointBtn" onclick="addCheckpoint()" disabled>
+            <span>Add Checkpoint on Blockchain</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: TRACK + PRODUCTS LIST -->
+    <div style="display:flex;flex-direction:column;gap:2rem;">
+
+      <!-- TRACK PANEL -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Track Product</div>
+        </div>
+        <div class="panel-body">
+          <div class="track-input-row">
+            <input type="number" class="track-input" id="trackId" placeholder="Enter Product ID (e.g. 1)" min="1" />
+            <button class="btn-track" onclick="trackProduct()">Track →</button>
+          </div>
+          <div id="trackResult">
+            <div class="empty">
+              <div class="empty-icon">⬡</div>
+              <div class="empty-text">Enter a product ID to track</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALL PRODUCTS -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Registered Products</div>
+          <span style="font-family:var(--mono);font-size:11px;color:var(--mist)" id="productCountLabel">0 products</span>
+        </div>
+        <div class="panel-body" style="padding:1rem 1.5rem">
+          <div class="products-list" id="productsList">
+            <div class="empty">
+              <div class="empty-icon">📦</div>
+              <div class="empty-text">No products registered yet</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-logo">Chain<em>Trace</em></div>
+    <div class="footer-meta">
+      SkillInfytech Blockchain Internship · Siddharam Kolle<br>
+      Supply Chain Tracking DApp · Built on Ethereum · 2026
+    </div>
+  </footer>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+<script>
+// ===== ABI =====
+const ABI = [
+  "function registerProduct(string memory _name, string memory _origin, string memory _manufacturer, string memory _firstLocation) public returns (uint256)",
+  "function addCheckpoint(uint256 _productId, string memory _location, string memory _action, string memory _handler, uint8 _status) public",
+  "function getProduct(uint256 _productId) public view returns (uint256, string memory, string memory, string memory, address, uint256, uint256)",
+  "function getCheckpoint(uint256 _productId, uint256 _checkpointIndex) public view returns (string memory, string memory, string memory, uint256, uint8)",
+  "function getCurrentStatus(uint256 _productId) public view returns (uint8)",
+  "function productCount() public view returns (uint256)",
+  "event ProductRegistered(uint256 indexed productId, string name, address owner)",
+  "event CheckpointAdded(uint256 indexed productId, string location, uint8 status)"
+];
+
+// ===== STATE =====
+let contract = null, signer = null, provider = null;
+let contractAddress = null;
+let localProducts = [];
+let totalCheckpoints = 0;
+let deliveredCount = 0;
+
+// ===== STATUS HELPERS =====
+const STATUS_LABELS = ['Created','In Transit','At Warehouse','In Customs','Out for Delivery','Delivered'];
+const STATUS_BADGES = ['badge-created','badge-transit','badge-warehouse','badge-customs','badge-delivery','badge-delivered'];
+const STATUS_DOTS = ['dot-created','dot-transit','dot-warehouse','dot-customs','dot-delivery','dot-delivered'];
+const STATUS_ICONS = ['🏭','🚛','🏬','🛃','📦','✅'];
+
+function statusBadge(s) {
+  return `<span class="product-badge ${STATUS_BADGES[s]}">${STATUS_ICONS[s]} ${STATUS_LABELS[s]}</span>`;
+}
+
+// ===== ALERT =====
+function showAlert(msg, type='info') {
+  const b = document.getElementById('alertBox');
+  b.className = `alert ${type} show`;
+  document.getElementById('alertMsg').textContent = msg;
+}
+
+// ===== TABS =====
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// ===== CONTRACT =====
+function setContract() {
+  const addr = document.getElementById('contractInput').value.trim();
+  if (!addr.startsWith('0x') || addr.length < 40) {
+showAlert('Please enter a valid contract address starting with 0x', 'error');
+    return;
+  }
+  contractAddress = addr;
+  if (signer) {
+    contract = new ethers.Contract(contractAddress, ABI, signer);
+    enableButtons();
+    loadAllProducts();
+  showAlert('Contract connected successfully! You can now register products.', 'success');
+  } else {
+    showAlert('Contract address saved! Please connect your wallet.', 'info');
+  }
+}
+
+// ===== WALLET =====
+async function connectWallet() {
+  if (!window.ethereum) {
+    showAlert('MetaMask is not installed. Please install MetaMask first.', 'error');
+    return;
+  }
+  try {
+    const btn = document.getElementById('walletBtn');
+document.getElementById('walletText').textContent = 'Connecting...';
+
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    provider = new ethers.BrowserProvider(window.ethereum);
+    signer = await provider.getSigner();
+
+    const net = await provider.getNetwork();
+    const chainId = Number(net.chainId);
+    const netName = chainId === 31337 ? 'LOCAL' : chainId === 1 ? 'MAINNET' : `CHAIN:${chainId}`;
+
+    document.getElementById('walletText').textContent = accounts[0].slice(0,6)+'...'+accounts[0].slice(-4);
+    document.getElementById('walletBtn').classList.add('connected');
+    document.getElementById('wdot').style.background = '#3ecf8e';
+    document.getElementById('statNetwork').textContent = netName;
+
+    if (contractAddress) {
+      contract = new ethers.Contract(contractAddress, ABI, signer);
+      enableButtons();
+      await loadAllProducts();
+    showAlert('Wallet connected successfully! You can now register products.', 'success');
+    } else {
+      showAlert('Wallet connected! Please paste the smart contract address.', 'info');
+    }
+  } catch(e) {
+    showAlert('Error: ' + e.message, 'error');
+    document.getElementById('walletBtn').innerHTML = '<div class="wdot" id="wdot"></div><span id="walletText">Connect Wallet</span>';
+  }
+}
+
+function enableButtons() {
+  document.getElementById('registerBtn').disabled = false;
+  document.getElementById('checkpointBtn').disabled = false;
+}
+
+// ===== REGISTER PRODUCT =====
+async function registerProduct() {
+  if (!contract) { showAlert('Please set the contract address first.', 'error'); return; }
+
+  const name = document.getElementById('prodName').value.trim();
+  const mfr = document.getElementById('prodMfr').value.trim();
+  const origin = document.getElementById('prodOrigin').value.trim();
+  const location = document.getElementById('prodLocation').value.trim();
+
+  if (!name || !mfr || !origin || !location) {
+    showAlert('Please fill in all required fields.', 'error');
+  }
+
+  try {
+    const btn = document.getElementById('registerBtn');
+    btn.innerHTML = '<div class="spin"></div><span id="mintBtnText">Confirm in MetaMask...</span>';
+    btn.disabled = true;
+    showAlert('Please confirm the transaction in MetaMask.', 'info');
+
+    const tx = await contract.registerProduct(name, origin, mfr, location);
+    btn.querySelector('span').textContent = 'Mining transaction...';
+    showAlert('Transaction submitted! Recording data on blockchain...', 'info');
+
+    const receipt = await tx.wait();
+    btn.innerHTML = '<span>Register on Blockchain</span>';
+    btn.disabled = false;
+
+    showAlert(`✅ "${name}" successfully registered on blockchain!`, 'success');
+
+    document.getElementById('prodName').value = '';
+    document.getElementById('prodMfr').value = '';
+    document.getElementById('prodOrigin').value = '';
+    document.getElementById('prodLocation').value = '';
+
+    await loadAllProducts();
+  } catch(e) {
+    document.getElementById('registerBtn').innerHTML = '<span>Register on Blockchain</span>';
+    document.getElementById('registerBtn').disabled = false;
+    showAlert('Error: ' + (e.reason || e.message), 'error');
+  }
+}
+
+// ===== ADD CHECKPOINT =====
+async function addCheckpoint() {
+  if (!contract) { showAlert('Please connect the smart contract first.', 'error'); return; }
+
+  const productId = document.getElementById('cpProductId').value;
+  const location = document.getElementById('cpLocation').value.trim();
+  const action = document.getElementById('cpAction').value.trim();
+  const handler = document.getElementById('cpHandler').value.trim();
+  const status = parseInt(document.getElementById('cpStatus').value);
+
+  if (!productId || !location || !action || !handler) {
+    showAlert('Sagle fields bharo!', 'error'); return;
+  }
+
+  try {
+    const btn = document.getElementById('checkpointBtn');
+    btn.innerHTML = '<div class="spin"></div><span>Confirm in MetaMask...</span>';
+    btn.disabled = true;
+    showAlert('Adding checkpoint to blockchain...', 'info');
+
+    const tx = await contract.addCheckpoint(productId, location, action, handler, status);
+    btn.querySelector('span').textContent = 'Mining...';
+    await tx.wait();
+
+    btn.innerHTML = '<span>Add Checkpoint on Blockchain</span>';
+    btn.disabled = false;
+    showAlert(`✅ Checkpoint added for Product #${productId}!`, 'success');
+
+    document.getElementById('cpLocation').value = '';
+    document.getElementById('cpAction').value = '';
+    document.getElementById('cpHandler').value = '';
+
+    await loadAllProducts();
+
+    const trackId = document.getElementById('trackId').value;
+    if (trackId === productId) await trackProduct();
+  } catch(e) {
+    document.getElementById('checkpointBtn').innerHTML = '<span>Add Checkpoint on Blockchain</span>';
+    document.getElementById('checkpointBtn').disabled = false;
+    showAlert('Error: ' + (e.reason || e.message), 'error');
+  }
+}
+
+// ===== TRACK PRODUCT =====
+async function trackProduct() {
+  const id = document.getElementById('trackId').value;
+  if (!id) { showAlert('Please enter a valid Product ID.', 'error'); return; }
+
+  if (!contract) {
+    showDemoTrack(id);
+    return;
+  }
+
+  try {
+    showAlert('Loading product from blockchain...', 'info');
+    const [pid, name, origin, manufacturer, owner, createdAt, checkpointCount] = await contract.getProduct(id);
+    const status = await contract.getCurrentStatus(id);
+
+    const checkpoints = [];
+    for (let i = 0; i < Number(checkpointCount); i++) {
+      const [loc, action, handler, ts, st] = await contract.getCheckpoint(id, i);
+      checkpoints.push({ location: loc, action, handler, timestamp: Number(ts), status: Number(st) });
+    }
+
+    renderTrackResult({
+      id: Number(pid), name, origin, manufacturer,
+      owner, createdAt: Number(createdAt),
+      status: Number(status), checkpoints
+    });
+    showAlert(`Product #${id} loaded from blockchain!`, 'success');
+  } catch(e) {
+    document.getElementById('trackResult').innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">❌</div>
+        <div class="empty-text">Product #${id} not found</div>
+      </div>`;
+    showAlert('Product not found: ' + (e.reason || e.message), 'error');
+  }
+}
+
+function renderTrackResult(p) {
+  const timeStr = new Date(p.createdAt * 1000).toLocaleString();
+  let tlHTML = '';
+
+  p.checkpoints.forEach((cp, i) => {
+    const s = cp.status;
+    const tsStr = new Date(cp.timestamp * 1000).toLocaleString();
+    tlHTML += `
+      <div class="timeline-item">
+        <div class="timeline-dot ${STATUS_DOTS[s]}">${STATUS_ICONS[s]}</div>
+        <div class="timeline-content">
+          <div class="tl-action">${cp.action}</div>
+          <div class="tl-location">📍 ${cp.location}</div>
+          <div class="tl-meta">
+            <span>Handler: ${cp.handler}</span>
+            <span>${tsStr}</span>
+          </div>
+        </div>
+      </div>`;
+  });
+
+  document.getElementById('trackResult').innerHTML = `
+    <div class="product-card">
+      <div class="product-card-header">
+        <div class="product-name">${p.name}</div>
+        ${statusBadge(p.status)}
+      </div>
+      <div class="product-meta">
+        <div class="meta-item">
+          <div class="meta-label">Product ID</div>
+          <div class="meta-value">#${p.id}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Origin</div>
+          <div class="meta-value">${p.origin}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Manufacturer</div>
+          <div class="meta-value">${p.manufacturer}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Registered</div>
+          <div class="meta-value">${timeStr}</div>
+        </div>
+      </div>
+    </div>
+    <div class="timeline">${tlHTML}</div>`;
+}
+
+function showDemoTrack(id) {
+  document.getElementById('trackResult').innerHTML = `
+    <div class="empty">
+      <div class="empty-icon">⬡</div>
+      <div class="empty-text">Connect wallet + set contract to track real products</div>
+    </div>`;
+}
+
+// ===== LOAD ALL PRODUCTS =====
+async function loadAllProducts() {
+  if (!contract) return;
+  try {
+    const count = Number(await contract.productCount());
+    localProducts = [];
+    totalCheckpoints = 0;
+    deliveredCount = 0;
+
+    for (let i = 1; i <= count; i++) {
+      const [pid, name, origin, manufacturer, owner, createdAt, cpCount] = await contract.getProduct(i);
+      const status = await contract.getCurrentStatus(i);
+      localProducts.push({ id: Number(pid), name, origin, manufacturer, status: Number(status), checkpoints: Number(cpCount) });
+      totalCheckpoints += Number(cpCount);
+      if (Number(status) === 5) deliveredCount++;
+    }
+
+    renderProductsList();
+    updateStats(count);
+  } catch(e) { console.log('Load error:', e); }
+}
+
+function renderProductsList() {
+  const list = document.getElementById('productsList');
+  document.getElementById('productCountLabel').textContent = localProducts.length + ' products';
+  document.getElementById('heroTotal').innerHTML = localProducts.length + '<span>+</span>';
+
+  if (localProducts.length === 0) {
+    list.innerHTML = `<div class="empty"><div class="empty-icon">📦</div><div class="empty-text">No products registered yet</div></div>`;
+    return;
+  }
+
+  list.innerHTML = localProducts.map((p, i) => `
+    <div class="product-row" style="animation-delay:${i*0.05}s" onclick="quickTrack(${p.id})">
+      <div class="pr-id">${p.id}</div>
+      <div class="pr-info">
+        <div class="pr-name">${p.name}</div>
+        <div class="pr-origin">${p.manufacturer} · ${p.origin}</div>
+      </div>
+      <span class="pr-status ${STATUS_BADGES[p.status]}">${STATUS_LABELS[p.status]}</span>
+      <div class="pr-checkpoints">${p.checkpoints} stops</div>
+    </div>
+  `).join('');
+}
+
+function quickTrack(id) {
+  document.getElementById('trackId').value = id;
+  trackProduct();
+  document.getElementById('trackId').scrollIntoView({ behavior: 'smooth' });
+}
+
+function updateStats(count) {
+  document.getElementById('statProducts').textContent = count;
+  document.getElementById('statCheckpoints').textContent = totalCheckpoints;
+  document.getElementById('statDelivered').textContent = deliveredCount;
+}
+
+// ===== DEMO DATA =====
+function fillDemo() {
+  const demos = [
+    { name:'iPhone 16 Pro', mfr:'Apple Inc.', origin:'China', loc:'Foxconn Factory, Shenzhen' },
+    { name:'Nike Air Max', mfr:'Nike Corporation', origin:'Vietnam', loc:'Nike Factory, Ho Chi Minh City' },
+    { name:'Toyota Camry Parts', mfr:'Toyota Motor Corp', origin:'Japan', loc:'Toyota Plant, Nagoya' },
+    { name:'Samsung OLED Panel', mfr:'Samsung Electronics', origin:'South Korea', loc:'Samsung Fab, Suwon' },
+  ];
+  const d = demos[Math.floor(Math.random() * demos.length)];
+  document.getElementById('prodName').value = d.name;
+  document.getElementById('prodMfr').value = d.mfr;
+  document.getElementById('prodOrigin').value = d.origin;
+  document.getElementById('prodLocation').value = d.loc;
+}
+
+// Init
+window.addEventListener('load', () => {
+  if (window.ethereum && window.ethereum.selectedAddress) connectWallet();
+});
+
+window.ethereum?.on('accountsChanged', () => location.reload());
+</script>
+</body>
+</html>
